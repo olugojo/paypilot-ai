@@ -1,4 +1,3 @@
-// Intentionally empty by default.
-// Add Drizzle tables here when the site actually needs a database.
-// See examples/d1/db/schema.ts for an opt-in example.
-export {};
+import {integer,sqliteTable,text,primaryKey,index,uniqueIndex} from "drizzle-orm/sqlite-core";
+export const invoices=sqliteTable("invoices",{owner:text("owner").notNull(),id:text("id").notNull(),data:text("data").notNull(),review:text("review"),created:integer("created").notNull()},t=>[primaryKey({columns:[t.owner,t.id]}),index("idx_invoices_owner_created").on(t.owner,t.created)]);
+export const payouts=sqliteTable("payouts",{owner:text("owner").notNull(),invoiceId:text("invoice_id").notNull(),invoiceKey:text("invoice_key").notNull(),senderBatch:text("sender_batch").notNull(),paypalBatch:text("paypal_batch"),status:text("status").notNull(),mode:text("mode").notNull(),error:text("error"),created:integer("created").notNull(),updated:integer("updated").notNull()},t=>[primaryKey({columns:[t.owner,t.invoiceId]}),uniqueIndex("idx_payouts_owner_invoice_key").on(t.owner,t.invoiceKey)]);

@@ -1,0 +1,3 @@
+import {config} from "@/lib/server";
+export const sandbox="https://api-m.sandbox.paypal.com";
+export async function paypalToken(){const e=config();if(!e.PAYPAL_CLIENT_ID||!e.PAYPAL_CLIENT_SECRET)throw Error("PayPal sandbox credentials are not configured.");const r=await fetch(sandbox+"/v1/oauth2/token",{method:"POST",headers:{Authorization:"Basic "+btoa(e.PAYPAL_CLIENT_ID+":"+e.PAYPAL_CLIENT_SECRET),"Content-Type":"application/x-www-form-urlencoded"},body:"grant_type=client_credentials",signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error("PayPal sandbox authentication failed.");const d=await r.json() as {access_token:string};return d.access_token;}

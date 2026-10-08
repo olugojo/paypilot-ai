@@ -1,0 +1,11 @@
+import {env} from "cloudflare:workers";
+import {getChatGPTUser} from "@/app/chatgpt-auth";
+import {type Invoice,type Review,samples,validateInvoices} from "@/lib/paypilot";
+export function db(){if(!env.DB)throw Error("Invoice storage is unavailable. Please try again later.");return env.DB;}
+export async function owner(){const user=await getChatGPTUser();if(!user)throw Error("Sign in to access your payment workspace.");return user.userId;}
+export async function readInvoices(user:string){const rows=await db().prepare("SELECT data FROM invoices WHERE owner=? ORDER BY created,id").bind(user).all<{data:string}>();return rows.results.map(r=>JSON.parse(r.data) as Invoice);}
+export async function seed(user:string){const existing=await readInvoices(user);if(existing.length)return;await db().batch(samples.map((i,n)=>db().prepare("INSERT OR IGNORE INTO invoices(owner,id,data,created) VALUES(?,?,?,?)").bind(user,i.id,JSON.stringify(i),Date.now()+n)));}
+export async function queue(user:string){const r=await db().prepare("SELECT i.data,i.review,p.status,p.paypal_batch,p.sender_batch,p.mode,p.error FROM invoices i LEFT JOIN payouts p ON p.owner=i.owner AND p.invoice_id=i.id WHERE i.owner=? ORDER BY i.created,i.id").bind(user).all<any>();return r.results.map(r=>({...JSON.parse(r.data),review:r.review?JSON.parse(r.review):undefined,status:r.status||undefined,batch:r.paypal_batch||(r.status?r.sender_batch:undefined),mode:r.mode,error:r.error}));}
+export async function saveReview(user:string,reviews:Review[]){await db().batch(reviews.map(r=>db().prepare("UPDATE invoices SET review=? WHERE owner=? AND id=?").bind(JSON.stringify(r),user,r.id)));}
+export async function addInvoice(user:string,input:unknown){const [i]=validateInvoices([input]);const count=await db().prepare("SELECT COUNT(*) AS n FROM invoices WHERE owner=?").bind(user).first<{n:number}>();if((count?.n||0)>=50)throw Error("This prototype supports 50 invoices per workspace.");await db().batch([db().prepare("INSERT INTO invoices(owner,id,data,created) VALUES(?,?,?,?)").bind(user,i.id,JSON.stringify(i),Date.now()),db().prepare("UPDATE invoices SET review=NULL WHERE owner=?").bind(user)]);return i;}
+export function invoiceKey(i:Invoice){return i.name.trim().toLowerCase()+"|"+i.number.trim().toLowerCase();}
