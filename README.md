@@ -1,6 +1,6 @@
 # PayPilot AI
 
-Contractor invoice review and human-approved PayPal sandbox payouts. The initial deployment runs in demonstration mode: invoice rules are real, AI explanations and PayPal calls require configuration. No live-payment endpoint exists.
+Contractor invoice review and human-approved PayPal sandbox payouts. The local end-to-end flow has been verified with Google Gemini and PayPal sandbox. Without configured credentials the application uses rule-based checks and simulated payouts. The older hosted demo has not been updated with the latest integration. No live-payment endpoint exists.
 
 ## Try the demo
 
@@ -18,7 +18,7 @@ The server obtains an OAuth token and submits `POST https://api-m.sandbox.paypal
 
 ## Optional AI explanations
 
-Configure `OPENAI_API_KEY` as a server-side secret and optionally `OPENAI_MODEL` (default `gpt-4.1-mini`). The adapter sends invoice descriptions, amounts, IDs, and validation issues to OpenAI; recipient emails and contractor names are omitted. The model explains findings and cannot override payment validation. Until a key is configured, the UI explicitly labels rule-based checks. AI and PayPal external calls have not been tested with credentials in this initial build.
+Configure `GEMINI_API_KEY` as a server-side secret and optionally `GEMINI_MODEL` (default `gemini-3.1-flash-lite`). The adapter sends invoice descriptions, amounts, IDs, and validation issues to Google Gemini; recipient emails and contractor names are omitted. The model explains findings and cannot override payment validation. Until a key is configured, the UI explicitly labels rule-based checks. On October 28, 2026, Gemini reviewed sample invoices and the app completed a $1.00 USD sandbox payout. Batch CPRFQ9GN38AP2 and its individual payout both returned SUCCESS; the PayPal sandbox dashboard showed the payment claimed. This is test money.
 
 ## Deployment
 
@@ -28,7 +28,7 @@ This project uses Sites and starts owner-private. Configure hosted secrets using
 
 - [PayPal payout request and duplicate behavior](https://developer.paypal.com/api/payments.payouts-batch/v1/definitions/create_payout_request/)
 - [PayPal REST API setup](https://developer.paypal.com/api/get-started/)
-- [OpenAI JSON mode](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=chat)
+- [Gemini structured outputs](https://ai.google.dev/gemini-api/docs/structured-output)
 
 
 ## Persistent backend development
@@ -42,3 +42,22 @@ node --import ./scripts/sites-env.mjs node_modules/wrangler/bin/wrangler.js d1 e
 The local preview simulates sign-in through `/signin-with-chatgpt?return_to=/`. The smoke test uses that local sign-in flow, writes synthetic records, and verifies invoice persistence and repeat-payout protection. Run it against a local database with no external API credentials. Production migrations are handled by Sites publishing.
 
 API routes: `GET/POST /api/invoices`, `POST /api/review`, `POST /api/payout`, and `POST /api/payout/status`. The payout request accepts only an invoice ID and explicit approval; payment details come from the saved record. Review receipts are stored server-side. Adding invoices invalidates previous reviews so duplicate checks run again.
+
+
+
+## Judge setup from a fresh clone
+
+1. Install Node.js 22.13 or later and clone this public repository.
+2. In the repository folder, run `npm run install:ci`.
+3. Copy `.env.example` to `.env`. For AI review, supply your own `GEMINI_API_KEY`. The tested model is `gemini-3.1-flash-lite`.
+4. For connected payouts, create a PayPal sandbox REST app associated with a US Business sandbox test account, enable Payouts, and set `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET`. Use a fictional US Personal sandbox account as recipient. Country settings here describe test accounts, not the developer's real identity or location.
+5. Generate a signing secret with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` and set `APP_SIGNING_SECRET` in `.env`.
+6. Run `npm run build`, then apply the initial local migration once using the command in Persistent backend development above.
+7. Run `npm run dev`, open the printed local URL, and use the simulated local sign-in if redirected. The local sign-in is for development only; production requires the hosting platform's identity checks.
+8. Click Review invoices. For a real sandbox test, add a new invoice for your sandbox recipient with a unique invoice number and $1.00 USD, review it, and approve only after verifying its details. Check saved payout status and confirm individual payment success in PayPal.
+
+If credentials are omitted, rule-based review and simulated payouts are available, but this mode does not demonstrate live Gemini or PayPal API integration. No real funds are used by the app. Never publish API keys, sandbox passwords, or .env files. Existing historical test batch IDs cannot be queried with a different sandbox merchant's credentials.
+
+## License and assistance
+
+Project-authored code is MIT licensed; see LICENSE. Bundled dependencies and vendored files retain their respective license notices. OpenAI Codex assisted implementation and testing. The prototype's AI role is invoice explanation, not independent fraud determination or autonomous payment approval.

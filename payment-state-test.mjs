@@ -1,0 +1,2 @@
+import assert from 'node:assert/strict';import {paymentState} from './lib/payment-state.ts';
+assert.equal(paymentState('DENIED').title,'Payout denied');assert.equal(paymentState('FAILED').tone,'warning');assert.equal(paymentState('PENDING').tone,'pending');assert.ok(!paymentState('SUCCESS').title.includes('approval'));assert.equal(paymentState('Simulated').title,'Payout simulated');assert.equal(paymentState(undefined,0).title,'Ready for your approval');assert.equal(paymentState(undefined,1).title,'Hold this payment');console.log('Payment-state regression checks passed');
